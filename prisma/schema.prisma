@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkoutSectionType {
+  AMRAP
+  EMOM
+  FOR_TIME
+  TABATA
+}
+
+model Workout {
+  id               String              @id @default(cuid())
+  date             DateTime
+  title            String?
+  notes            String?
+  authorId         String
+
+  warmupType       WorkoutSectionType?
+  warmupDescription String?
+  skillType        WorkoutSectionType?
+  skillDescription String?
+  wodType          WorkoutSectionType?
+  wodDescription   String?
+
+  warmup           Block[]             @relation("WarmupBlocks")
+  skill            Block[]             @relation("SkillBlocks")
+  wod              Block[]             @relation("WodBlocks")
+
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([date])
+  @@index([authorId])
+}
+
+model Block {
+  id          String    @id @default(cuid())
+  name        String?
+  reps        String
+  totalReps   Int?
+  sets        String?
+  duration    String?
+  order       Int
+  workoutDate DateTime  @db.Date
+
+  movementId String?
+  movement   Movement? @relation(fields: [movementId], references: [id], onDelete: SetNull)
+
+  warmupOfId String?
+  warmupOf   Workout? @relation("WarmupBlocks", fields: [warmupOfId], references: [id], onDelete: Cascade)
+  skillOfId  String?
+  skillOf    Workout? @relation("SkillBlocks", fields: [skillOfId], references: [id], onDelete: Cascade)
+  wodOfId    String?
+  wodOf      Workout? @relation("WodBlocks", fields: [wodOfId], references: [id], onDelete: Cascade)
+
+  @@index([movementId])
+  @@index([workoutDate])
+}
+
+model Movement {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  abbreviation String?
+  description String?
+  blocks      Block[]
+  createdAt   DateTime @default(now())
+
+  @@index([name])
+}
+
+enum Role {
+  ADMIN
+  COLLABORATOR
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+model User {
+  id                  String     @id @default(cuid())
+  name                String
+  email               String     @unique
+  passwordHash        String?
+  googleId            String?    @unique
+  role                Role       @default(COLLABORATOR)
+  status              UserStatus @default(BLOCKED)
+  onboardingCompleted Boolean    @default(false)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+}
